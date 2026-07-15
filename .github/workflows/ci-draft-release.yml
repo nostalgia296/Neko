@@ -52,16 +52,46 @@ jobs:
         run: ./gradlew testDebugUnitTest
 
       - name: Write google-services.json
-        uses: DamianReeves/write-file-action@v1.3
-        with:
-          path: app/google-services.json
-          contents: ${{ secrets.GOOGLE_SERVICE_JSON }}
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICE_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "GOOGLE_SERVICE_JSON secret is empty. Using mock google-services.json"
+            cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "1234567890",
+              "project_id": "dummy"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:1234567890:android:1234567890",
+                  "android_client_info": {
+                    "package_name": "org.nekomanga.neko"
+                  }
+                },
+                "api_key": [
+                  {
+                    "current_key": "dummy"
+                  }
+                ]
+              }
+            ]
+          }
+          EOF
+          else
+            echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          fi
 
       - name: Build App
         run: ./gradlew assembleStandardRelease
 
       - name: Sign APKs
         id: sign_app
+        if: ${{ env.SIGNING_KEY != '' }}
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/standard/release
@@ -78,11 +108,12 @@ jobs:
           ls -l "$RELEASE_DIR"
           echo "------------------------------------"
           # Move and rename the files using the correct path.
-          mv "$RELEASE_DIR"/*universal-release-unsigned-signed.apk neko-universal.apk
-          mv "$RELEASE_DIR"/*arm64-v8a-release-unsigned-signed.apk neko-arm64-v8a.apk
-          mv "$RELEASE_DIR"/*armeabi-v7a-release-unsigned-signed.apk neko-armeabi-v7a.apk
-          mv "$RELEASE_DIR"/*x86-release-unsigned-signed.apk neko-x86.apk
-          mv "$RELEASE_DIR"/*x86_64-release-unsigned-signed.apk neko-x86_64.apk
+          # Match either unsigned or signed APKs
+          mv "$RELEASE_DIR"/*universal-release*.apk neko-universal.apk
+          mv "$RELEASE_DIR"/*arm64-v8a-release*.apk neko-arm64-v8a.apk
+          mv "$RELEASE_DIR"/*armeabi-v7a-release*.apk neko-armeabi-v7a.apk
+          mv "$RELEASE_DIR"/*x86-release*.apk neko-x86.apk
+          mv "$RELEASE_DIR"/*x86_64-release*.apk neko-x86_64.apk
           {
             echo 'sha_table<<EOF'
             echo ""
