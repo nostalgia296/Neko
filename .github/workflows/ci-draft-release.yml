@@ -132,7 +132,7 @@ jobs:
         id: last_release
         uses: pozetroninc/github-action-get-latest-release@master
         with:
-          repository: ${{ github.repository }}
+          repository: 'nekomangaorg/Neko'
           excludes: 'prerelease,draft'
           token: ${{ secrets.GITHUB_TOKEN }}
 
