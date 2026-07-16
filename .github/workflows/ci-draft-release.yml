@@ -136,29 +136,6 @@ jobs:
           excludes: 'prerelease,draft'
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Custom Changelog
-        id: custom_changelog
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          set -e
-          chmod +x ./.github/scripts/generate_changelog.sh
-          current_sha=$(git rev-parse --short HEAD)
-          echo "CURRENT_SHA=$current_sha" >> $GITHUB_ENV
-          prev_release_sha=$(git rev-list -n 1 ${{ steps.last_release.outputs.release }})
-          echo "The previous release SHA is: -->$prev_release_sha<--"
-          echo "The current SHA is: -->current_sha<--"
-          echo "Url to compare: https://api.github.com/repos/nekomangaorg/neko/compare/$prev_release_sha...$current_sha"
-
-          # Call the script with the correct start and end SHAs
-          CHANGELOG_CONTENT=$(./.github/scripts/generate_changelog.sh $prev_release_sha $current_sha)
-
-          # Set the multiline output for the release step
-          {
-            echo 'changelog_body<<EOF'
-            echo "$CHANGELOG_CONTENT"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
 
       - name: Update GitHub Draft Release
         uses: ncipollo/release-action@v1
@@ -166,8 +143,6 @@ jobs:
           tag: latest
           generateReleaseNotes: false
           body: |
-            ${{ steps.custom_changelog.outputs.changelog_body }}
-
             ${{ steps.prep_artifacts.outputs.sha_table }}
           draft: true
           allowUpdates: true
